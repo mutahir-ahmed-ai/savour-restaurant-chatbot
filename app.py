@@ -103,7 +103,6 @@ for i, suggestion in enumerate(suggestions):
             st.session_state.messages.append({"role": "user", "content": suggestion})
             st.session_state["pending_response"] = suggestion
             st.rerun()
-
 # --- Display Chat History ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
