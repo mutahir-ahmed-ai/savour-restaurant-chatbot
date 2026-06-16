@@ -3,7 +3,7 @@
 An AI-powered customer service chatbot for a Pakistani-fusion restaurant, built using Claude API and Streamlit. Demonstrates how small businesses can automate customer queries with a conversational AI assistant.
 
 ## 🚀 Live Demo
-[👉 Try it here](https://your-streamlit-link-here) *(deploy to Streamlit Cloud and update this link)*
+[👉 Try it here]([https://your-streamlit-link-here](https://savour-restaurant-chatbot-rjhv8m8phfsz4wvvt8qg7z.streamlit.app/)) *(deploy to Streamlit Cloud and update this link)*
 
 ## 💡 Features
 - 💬 Multi-turn conversation with memory across the session
