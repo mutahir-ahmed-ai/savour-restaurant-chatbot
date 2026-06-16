@@ -28,7 +28,7 @@ st.markdown("""
 st.markdown("""
 <div class="restaurant-header">
     <h2>🍽️ Savour Restaurant</h2>
-    <p style="color: #888; font-size: 14px;">AI-powered customer assistant —</p>
+    <p style="color: #888; font-size: 14px;">AI-powered customer assistant — ask me anything!</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -38,20 +38,20 @@ SYSTEM_PROMPT = """You are a friendly, helpful AI assistant for Savour, a Pakist
 Restaurant Information:
 - Name: Savour Restaurant
 - Location: DHA Phase 5, Karachi, Pakistan
-- Hours: Monday–Thursday 12pm–11pm | Friday–Sunday 12pm–12am
+- Hours: Monday-Thursday 12pm-11pm | Friday-Sunday 12pm-12am
 - Phone/WhatsApp for reservations: 0300-1234567
 - Parking: Available on-site
 
 Menu Highlights:
 - Desi BBQ Platter (PKR 1,800)
 - Karahi Chicken (PKR 1,200)
-- Biryani Bowl — Chicken or Beef (PKR 900)
+- Biryani Bowl - Chicken or Beef (PKR 900)
 - Pakistani-Italian Fusion Pasta (PKR 1,100)
-- Paneer Karahi — vegetarian (PKR 1,000)
-- Daal Makhani — vegetarian (PKR 750)
-- Veggie Pasta — vegetarian (PKR 950)
-- Soft drinks & juices: PKR 200–350
-- Specialty chai & desserts: PKR 150–500
+- Paneer Karahi - vegetarian (PKR 1,000)
+- Daal Makhani - vegetarian (PKR 750)
+- Veggie Pasta - vegetarian (PKR 950)
+- Soft drinks & juices: PKR 200-350
+- Specialty chai & desserts: PKR 150-500
 
 Dietary Options:
 - Vegetarian: Yes (paneer karahi, daal makhani, veggie pasta)
@@ -74,7 +74,7 @@ Rules:
 api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 
 if not api_key:
-    st.error("⚠️ GROQ_API_KEY not found. Add it to your Streamlit secrets.")
+    st.error("GROQ_API_KEY not found. Add it to your Streamlit secrets.")
     st.stop()
 
 llm = ChatGroq(
@@ -87,59 +87,47 @@ llm = ChatGroq(
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- Suggested Questions ---
+# --- Helper: get LLM reply ---
+def get_reply():
+    langchain_messages = [SystemMessage(content=SYSTEM_PROMPT)]
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            langchain_messages.append(HumanMessage(content=msg["content"]))
+        else:
+            langchain_messages.append(AIMessage(content=msg["content"]))
+    response = llm.invoke(langchain_messages)
+    return response.content
+
+# --- Suggestion Buttons ---
 if not st.session_state.messages:
     st.markdown("**Quick questions:**")
-    cols = st.columns(2)
     suggestions = [
         "What are your opening hours?",
         "Do you have vegetarian options?",
         "How do I make a reservation?",
         "Show me your menu"
     ]
-for i, suggestion in enumerate(suggestions):
-    with cols[i % 2]:
-        if st.button(suggestion, key=f"sug_{i}", use_container_width=True):
-            st.session_state.messages.append({"role": "user", "content": suggestion})
-            st.session_state["pending_response"] = suggestion
-            st.rerun()
+    cols = st.columns(2)
+    for i, suggestion in enumerate(suggestions):
+        with cols[i % 2]:
+            if st.button(suggestion, key=f"sug_{i}", use_container_width=True):
+                st.session_state.messages.append({"role": "user", "content": suggestion})
+                reply = get_reply()
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+                st.rerun()
+
 # --- Display Chat History ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-# Handle suggestion button input
-if "pending_response" in st.session_state:
-    prompt = st.session_state.pop("pending_response")
-    with st.chat_message("assistant"):
-        with st.spinner(""):
-            langchain_messages = [SystemMessage(content=SYSTEM_PROMPT)]
-            for msg in st.session_state.messages:
-                if msg["role"] == "user":
-                    langchain_messages.append(HumanMessage(content=msg["content"]))
-                else:
-                    langchain_messages.append(AIMessage(content=msg["content"]))
-            response = llm.invoke(langchain_messages)
-            reply = response.content
-            st.markdown(reply)
-    st.session_state.messages.append({"role": "assistant", "content": reply})
-# --- Handle Input ---
+
+# --- Chat Input ---
 if prompt := st.chat_input("Ask anything about Savour..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-
     with st.chat_message("assistant"):
         with st.spinner(""):
-            # Build LangChain message history
-            langchain_messages = [SystemMessage(content=SYSTEM_PROMPT)]
-            for msg in st.session_state.messages:
-                if msg["role"] == "user":
-                    langchain_messages.append(HumanMessage(content=msg["content"]))
-                else:
-                    langchain_messages.append(AIMessage(content=msg["content"]))
-
-            response = llm.invoke(langchain_messages)
-            reply = response.content
+            reply = get_reply()
             st.markdown(reply)
-
     st.session_state.messages.append({"role": "assistant", "content": reply})
