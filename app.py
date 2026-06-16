@@ -98,16 +98,31 @@ if not st.session_state.messages:
         "Show me your menu"
     ]
     for i, suggestion in enumerate(suggestions):
-        with cols[i % 2]:
-            if st.button(suggestion, key=f"sug_{i}", use_container_width=True):
-                st.session_state.messages.append({"role": "user", "content": suggestion})
-                st.rerun()
+    with cols[i % 2]:
+        if st.button(suggestion, key=f"sug_{i}", use_container_width=True):
+            st.session_state.messages.append({"role": "user", "content": suggestion})
+            st.session_state["pending_response"] = suggestion
+            st.rerun()
 
 # --- Display Chat History ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-
+# Handle suggestion button input
+if "pending_response" in st.session_state:
+    prompt = st.session_state.pop("pending_response")
+    with st.chat_message("assistant"):
+        with st.spinner(""):
+            langchain_messages = [SystemMessage(content=SYSTEM_PROMPT)]
+            for msg in st.session_state.messages:
+                if msg["role"] == "user":
+                    langchain_messages.append(HumanMessage(content=msg["content"]))
+                else:
+                    langchain_messages.append(AIMessage(content=msg["content"]))
+            response = llm.invoke(langchain_messages)
+            reply = response.content
+            st.markdown(reply)
+    st.session_state.messages.append({"role": "assistant", "content": reply})
 # --- Handle Input ---
 if prompt := st.chat_input("Ask anything about Savour..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
