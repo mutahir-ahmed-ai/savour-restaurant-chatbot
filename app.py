@@ -75,7 +75,6 @@ Rules:
 
 # --- Initialize Anthropic Client ---
 api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-
 if not api_key:
     st.error("⚠️ ANTHROPIC_API_KEY not found. Add it to your Streamlit secrets or environment variables.")
     st.stop()
@@ -86,7 +85,22 @@ client = Anthropic(api_key=api_key)
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- Suggested Questions ---
+# --- Helper: generate assistant reply ---
+def generate_reply():
+    """Call the API and append the assistant reply to session state."""
+    with st.chat_message("assistant"):
+        with st.spinner(""):
+            response = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=1000,
+                system=SYSTEM_PROMPT,
+                messages=st.session_state.messages
+            )
+            reply = response.content[0].text
+            st.markdown(reply)
+    st.session_state.messages.append({"role": "assistant", "content": reply})
+
+# --- Suggested Questions (only shown before any conversation) ---
 if not st.session_state.messages:
     st.markdown("**Quick questions:**")
     cols = st.columns(2)
@@ -100,28 +114,23 @@ if not st.session_state.messages:
         with cols[i % 2]:
             if st.button(suggestion, key=f"sug_{i}", use_container_width=True):
                 st.session_state.messages.append({"role": "user", "content": suggestion})
-                st.rerun()
+                # Don't rerun — fall through so we generate a reply this render cycle
+                break  # only one button can be clicked per render
 
 # --- Display Chat History ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- Handle Input ---
+# --- Generate reply if last message is from user (handles both button clicks and chat input) ---
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+    # Check we haven't already rendered the last message above (avoid double display)
+    generate_reply()
+    st.rerun()  # refresh so the input box is clean and history is in sync
+
+# --- Chat Input ---
 if prompt := st.chat_input("Ask anything about Savour..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        with st.spinner(""):
-            response = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=1000,
-                system=SYSTEM_PROMPT,
-                messages=st.session_state.messages
-            )
-            reply = response.content[0].text
-            st.markdown(reply)
-
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+    generate_reply()
