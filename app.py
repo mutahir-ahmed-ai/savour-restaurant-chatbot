@@ -28,7 +28,7 @@ st.markdown("""
 st.markdown("""
 <div class="restaurant-header">
     <h2>🍽️ Savour Restaurant</h2>
-    <p style="color: #888; font-size: 14px;">AI-powered customer assistant — ask me anything!</p>
+    <p style="color: #888; font-size: 14px;">AI-powered customer assistant</p>
 </div>
 """, unsafe_allow_html=True)
 
