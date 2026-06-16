@@ -97,7 +97,7 @@ if not st.session_state.messages:
         "How do I make a reservation?",
         "Show me your menu"
     ]
-    for i, suggestion in enumerate(suggestions):
+for i, suggestion in enumerate(suggestions):
     with cols[i % 2]:
         if st.button(suggestion, key=f"sug_{i}", use_container_width=True):
             st.session_state.messages.append({"role": "user", "content": suggestion})
