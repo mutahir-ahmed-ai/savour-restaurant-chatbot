@@ -1,6 +1,7 @@
 import os
 import streamlit as st
-from anthropic import Anthropic
+from langchain_groq import ChatGroq
+from langchain.schema import SystemMessage, HumanMessage, AIMessage
 
 # --- Page Config ---
 st.set_page_config(
@@ -31,7 +32,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- System Prompt (Restaurant Knowledge Base) ---
+# --- System Prompt ---
 SYSTEM_PROMPT = """You are a friendly, helpful AI assistant for Savour, a Pakistani-fusion restaurant in DHA Phase 5, Karachi.
 
 Restaurant Information:
@@ -54,33 +55,33 @@ Menu Highlights:
 
 Dietary Options:
 - Vegetarian: Yes (paneer karahi, daal makhani, veggie pasta)
-- Vegan options: Limited — ask staff
 - Halal: Yes, fully halal certified
 
 Delivery:
 - Available via foodpanda and Cheetah
-- No direct delivery
 
 Events & Private Dining:
 - Private dining room available for up to 30 guests
-- Corporate dinners, family gatherings, birthday events
-- Contact via WhatsApp to book: 0300-1234567
+- Contact via WhatsApp: 0300-1234567
 
 Rules:
 - Only answer questions about Savour Restaurant
 - If asked something unrelated, politely redirect
 - Keep responses friendly, concise, and helpful
-- Always encourage reservations for groups of 6 or more
-- If unsure about something specific, suggest calling on WhatsApp"""
+- Always encourage reservations for groups of 6 or more"""
 
-# --- Initialize Anthropic Client ---
-api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+# --- Initialize Groq Client ---
+api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 
 if not api_key:
-    st.error("⚠️ ANTHROPIC_API_KEY not found. Add it to your Streamlit secrets or environment variables.")
+    st.error("⚠️ GROQ_API_KEY not found. Add it to your Streamlit secrets.")
     st.stop()
 
-client = Anthropic(api_key=api_key)
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    groq_api_key=api_key,
+    temperature=0.0
+)
 
 # --- Session State ---
 if "messages" not in st.session_state:
@@ -115,13 +116,16 @@ if prompt := st.chat_input("Ask anything about Savour..."):
 
     with st.chat_message("assistant"):
         with st.spinner(""):
-            response = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=1000,
-                system=SYSTEM_PROMPT,
-                messages=st.session_state.messages
-            )
-            reply = response.content[0].text
+            # Build LangChain message history
+            langchain_messages = [SystemMessage(content=SYSTEM_PROMPT)]
+            for msg in st.session_state.messages:
+                if msg["role"] == "user":
+                    langchain_messages.append(HumanMessage(content=msg["content"]))
+                else:
+                    langchain_messages.append(AIMessage(content=msg["content"]))
+
+            response = llm.invoke(langchain_messages)
+            reply = response.content
             st.markdown(reply)
 
     st.session_state.messages.append({"role": "assistant", "content": reply})
